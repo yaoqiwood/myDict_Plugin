@@ -44,34 +44,13 @@
       <div class="hint">如需私有实例，可使用 `libre` 并在后台替换接口。</div>
     </div>
 
+    <div class="row">
+      <label for="showMarker">右下角 QT 标记</label>
+      <input id="showMarker" type="checkbox" /> 显示（默认不显示）
+    </div>
+
     <button id="save">保存</button><span id="msg" class="ok" style="display:none;">已保存</span>
 
-    <script>
-      const els = {
-        theme: document.getElementById('theme'),
-        lang: document.getElementById('lang'),
-        provider: document.getElementById('provider'),
-        save: document.getElementById('save'),
-        msg: document.getElementById('msg')
-      };
-
-      function load() {
-        chrome.storage.sync.get({ theme: 'light', targetLang: 'zh', provider: 'mymemory' }, (items) => {
-          els.theme.value = items.theme;
-          els.lang.value = items.targetLang;
-          els.provider.value = items.provider;
-        });
-      }
-
-      function save() {
-        chrome.storage.sync.set({ theme: els.theme.value, targetLang: els.lang.value, provider: els.provider.value }, () => {
-          els.msg.style.display = 'inline';
-          setTimeout(() => els.msg.style.display = 'none', 1000);
-        });
-      }
-
-      els.save.addEventListener('click', save);
-      load();
-    </script>
+    <script src="options.js"></script>
   </body>
 </html>

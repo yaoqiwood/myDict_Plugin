@@ -4,9 +4,47 @@ const DEFAULTS = {
   provider: 'mymemory',
 };
 
+function mapToMyMemoryCode(lang) {
+  const l = (lang || '').toLowerCase();
+  switch (l) {
+    case 'zh':
+    case 'zh-cn':
+    case 'cn':
+      return 'ZH-CN';
+    case 'zh-tw':
+      return 'ZH-TW';
+    case 'en':
+      return 'EN';
+    case 'ja':
+      return 'JA';
+    case 'ko':
+      return 'KO';
+    case 'fr':
+      return 'FR';
+    case 'es':
+      return 'ES';
+    default:
+      return (l || 'en').toUpperCase();
+  }
+}
+
+function detectSourceLangSimple(text) {
+  if (!text) return 'EN';
+  // Basic script detection by Unicode ranges
+  // CJK Unified Ideographs
+  if (/[\u4E00-\u9FFF]/.test(text)) return 'ZH-CN';
+  // Hiragana or Katakana
+  if (/[\u3040-\u309F\u30A0-\u30FF]/.test(text)) return 'JA';
+  // Hangul
+  if (/[\uAC00-\uD7AF]/.test(text)) return 'KO';
+  // Latin default
+  return 'EN';
+}
+
 async function translateWithMyMemory(text, target) {
-  // Use auto source, format plain
-  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${encodeURIComponent('auto|' + target)}`;
+  const srcCode = detectSourceLangSimple(text);
+  const tgtCode = mapToMyMemoryCode(target);
+  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${encodeURIComponent(srcCode + '|' + tgtCode)}`;
   const res = await fetch(url, { method: 'GET' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
@@ -15,7 +53,6 @@ async function translateWithMyMemory(text, target) {
 }
 
 async function translateWithLibre(text, target) {
-  // Public demo server, may rate limit; use as fallback
   const res = await fetch('https://libretranslate.de/translate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -29,7 +66,12 @@ async function translateWithLibre(text, target) {
 async function doTranslate({ text, target, provider }) {
   const chosen = provider || DEFAULTS.provider;
   if (chosen === 'libre') return translateWithLibre(text, target);
-  return translateWithMyMemory(text, target);
+  try {
+    return await translateWithMyMemory(text, target);
+  } catch (e) {
+    // Fallback to Libre on MyMemory errors (like invalid langpair)
+    return await translateWithLibre(text, target);
+  }
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
