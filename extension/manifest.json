@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "QuickTranslator",
+  "description": "Select text to translate instantly. Multi-language, hotkeys, UI controls, and options.",
+  "version": "1.0.0",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://api.mymemory.translated.net/*",
+    "https://libretranslate.de/*",
+    "https://libretranslate.com/*",
+    "http://localhost/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "QuickTranslator",
+    "default_popup": "popup.html"
+  },
+  "commands": {
+    "translate-selection": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+T",
+        "mac": "Command+Shift+T"
+      },
+      "description": "Translate current selection"
+    }
+  },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
