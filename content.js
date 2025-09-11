@@ -344,6 +344,11 @@
     panel = null;
     sourceTextArea = null;
     targetTextArea = null;
+    // Clean up AI button
+    if (window.qtAiButton) {
+      window.qtAiButton.remove();
+      window.qtAiButton = null;
+    }
   }
 
   function formatWordLookup(wordData) {
@@ -407,21 +412,36 @@
     const text = (sourceTextArea?.value || '').trim();
     if (!text) return;
     
-    // Check if it's a single word and we're using DeepSeek
+    // Check if it's a single word
     const isSingle = text.length > 0 && !/\s/.test(text) && /^[a-zA-Z\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]+$/.test(text);
     
-    if (isSingle && STATE.provider === 'deepseek') {
-      setTarget('🔄 正在查询单词...');
-      // Use streaming for single words with DeepSeek
-      chrome.runtime.sendMessage({
-        type: 'qt.word-lookup-stream',
-        payload: {
-          word: text,
-          target: STATE.targetLang,
-          provider: STATE.provider
+    if (isSingle) {
+      // For single words, first show public translation
+      setTarget('翻译中…');
+      try {
+        // Force use public translation source for initial translation
+        const publicProvider = STATE.provider === 'deepseek' ? 'mymemory' : STATE.provider;
+        const response = await chrome.runtime.sendMessage({
+          type: 'qt.translate',
+          payload: {
+            text,
+            target: STATE.targetLang,
+            provider: publicProvider
+          }
+        });
+        if (response && response.ok) {
+          const result = response.data;
+          setTarget(result.translation || result);
+          // Add AI lookup button after showing translation
+          addAiLookupButton(text);
+        } else {
+          setTarget(`翻译失败: ${response?.error || '未知错误'}`);
         }
-      });
+      } catch (e) {
+        setTarget(`翻译失败: ${String(e)}`);
+      }
     } else {
+      // For phrases/sentences, use normal translation
       setTarget('翻译中…');
       try {
         const response = await chrome.runtime.sendMessage({
@@ -450,6 +470,70 @@
 
   function setTarget(val) {
     if (targetTextArea) targetTextArea.value = val;
+  }
+
+  function addAiLookupButton(word) {
+    if (!targetTextArea) return;
+    
+    // Create AI lookup button
+    const aiButton = document.createElement('button');
+    aiButton.textContent = 'AI 查词释义';
+    aiButton.style.cssText = `
+      margin-top: 8px;
+      padding: 6px 12px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      display: block;
+    `;
+    
+    // Add click handler
+    aiButton.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      
+      aiButton.textContent = 'AI 查询中...';
+      aiButton.disabled = true;
+      
+      try {
+        // Use streaming for AI word lookup
+        chrome.runtime.sendMessage({
+          type: 'qt.word-lookup-stream',
+          payload: {
+            word: word,
+            target: STATE.targetLang,
+            provider: 'deepseek'
+          }
+        });
+      } catch (e) {
+        setTarget(`AI 查询失败: ${String(e)}`);
+        aiButton.textContent = 'AI 查词释义';
+        aiButton.disabled = false;
+      }
+    });
+    
+    // Insert button after the target textarea
+    targetTextArea.parentNode.insertBefore(aiButton, targetTextArea.nextSibling);
+    
+    // Store reference to the button
+    window.qtAiButton = aiButton;
+  }
+
+  function hideAiButton() {
+    if (window.qtAiButton) {
+      window.qtAiButton.style.display = 'none';
+    }
+  }
+
+  function showAiButton() {
+    if (window.qtAiButton) {
+      window.qtAiButton.style.display = 'block';
+      window.qtAiButton.textContent = 'AI 查词释义';
+      window.qtAiButton.disabled = false;
+    }
   }
 
   function onSelectionTrigger() {
@@ -521,10 +605,14 @@
       
       if (msg && msg.type === 'qt.stream-complete') {
         setTarget(formatWordLookup(msg.data));
+        // Hide AI button after completion
+        hideAiButton();
       }
       
       if (msg && msg.type === 'qt.stream-error') {
         setTarget(`查询失败: ${msg.error}`);
+        // Show AI button again on error
+        showAiButton();
       }
     });
 
