@@ -346,26 +346,105 @@
     targetTextArea = null;
   }
 
+  function formatWordLookup(wordData) {
+    if (!wordData || !wordData.isWordLookup) return wordData;
+    
+    const data = wordData.data;
+    let formatted = `📖 ${data.word || ''}\n`;
+    
+    if (data.phonetic) {
+      formatted += `🔊 ${data.phonetic}\n\n`;
+    }
+    
+    if (data.part_of_speech && Array.isArray(data.part_of_speech)) {
+      data.part_of_speech.forEach((pos, index) => {
+        formatted += `${index + 1}. ${pos.pos || ''}\n`;
+        if (pos.definitions && Array.isArray(pos.definitions)) {
+          pos.definitions.forEach((def, defIndex) => {
+            formatted += `   ${defIndex + 1}) ${def}\n`;
+          });
+        }
+        if (pos.examples && Array.isArray(pos.examples)) {
+          pos.examples.forEach((example) => {
+            formatted += `   💡 ${example}\n`;
+          });
+        }
+        formatted += '\n';
+      });
+    }
+    
+    if (data.translations && data.translations['zh-CN']) {
+      formatted += `🇨🇳 中文释义:\n`;
+      data.translations['zh-CN'].forEach((trans, index) => {
+        formatted += `   ${index + 1}) ${trans}\n`;
+      });
+      formatted += '\n';
+    }
+    
+    if (data.frequency) {
+      formatted += `📊 使用频率: ${data.frequency}\n`;
+    }
+    
+    if (data.tags && Array.isArray(data.tags)) {
+      formatted += `🏷️ 标签: ${data.tags.join(', ')}\n`;
+    }
+    
+    return formatted.trim();
+  }
+
+  function formatStreamingContent(rawContent) {
+    try {
+      // Try to parse as JSON and format
+      const data = JSON.parse(rawContent);
+      return formatWordLookup({ isWordLookup: true, data });
+    } catch (e) {
+      // If not valid JSON yet, show raw content with loading indicator
+      return `🔄 正在查询...\n\n${rawContent}`;
+    }
+  }
+
   async function doTranslate() {
     const text = (sourceTextArea?.value || '').trim();
     if (!text) return;
-    setTarget('翻译中…');
-    try {
-      const response = await chrome.runtime.sendMessage({
-        type: 'qt.translate',
+    
+    // Check if it's a single word and we're using DeepSeek
+    const isSingle = text.length > 0 && !/\s/.test(text) && /^[a-zA-Z\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]+$/.test(text);
+    
+    if (isSingle && STATE.provider === 'deepseek') {
+      setTarget('🔄 正在查询单词...');
+      // Use streaming for single words with DeepSeek
+      chrome.runtime.sendMessage({
+        type: 'qt.word-lookup-stream',
         payload: {
-          text,
+          word: text,
           target: STATE.targetLang,
           provider: STATE.provider
         }
       });
-      if (response && response.ok) {
-        setTarget(response.data.translation);
-      } else {
-        setTarget(`翻译失败: ${response?.error || '未知错误'}`);
+    } else {
+      setTarget('翻译中…');
+      try {
+        const response = await chrome.runtime.sendMessage({
+          type: 'qt.translate',
+          payload: {
+            text,
+            target: STATE.targetLang,
+            provider: STATE.provider
+          }
+        });
+        if (response && response.ok) {
+          const result = response.data;
+          if (result.isWordLookup) {
+            setTarget(formatWordLookup(result));
+          } else {
+            setTarget(result.translation || result);
+          }
+        } else {
+          setTarget(`翻译失败: ${response?.error || '未知错误'}`);
+        }
+      } catch (e) {
+        setTarget(`翻译失败: ${String(e)}`);
       }
-    } catch (e) {
-      setTarget(`翻译失败: ${String(e)}`);
     }
   }
 
@@ -433,6 +512,19 @@
             openPanelSafe(selection);
           }
         }
+      }
+      
+      // Handle streaming updates
+      if (msg && msg.type === 'qt.stream-update') {
+        setTarget(formatStreamingContent(msg.data));
+      }
+      
+      if (msg && msg.type === 'qt.stream-complete') {
+        setTarget(formatWordLookup(msg.data));
+      }
+      
+      if (msg && msg.type === 'qt.stream-error') {
+        setTarget(`查询失败: ${msg.error}`);
       }
     });
 
