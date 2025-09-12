@@ -7,7 +7,7 @@
       body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; padding: 16px; }
       .row { margin-bottom: 12px; }
       label { display: block; margin-bottom: 4px; font-weight: 600; }
-      select, input[type="text"] { width: 260px; padding: 6px; }
+      select, input[type="text"], input[type="password"] { width: 320px; padding: 6px; }
       .hint { color: #666; font-size: 12px; }
       .ok { color: #2a7; margin-left: 8px; }
     </style>
@@ -40,8 +40,17 @@
       <select id="provider">
         <option value="mymemory">MyMemory (免费，免密钥)</option>
         <option value="libre">LibreTranslate (公共实例，可能限流)</option>
+        <option value="deepseek">DeepSeek（需 API Key，OpenAI 兼容）</option>
       </select>
-      <div class="hint">如需私有实例，可使用 `libre` 并在后台替换接口。</div>
+      <div class="hint">DeepSeek 使用 OpenAI 兼容接口，需提供 API Key，默认地址为 https://api.deepseek.com/。</div>
+    </div>
+
+    <div class="row" id="deepseek-config" style="display:none;">
+      <label>DeepSeek 配置</label>
+      <input id="deepseekKey" type="password" placeholder="DeepSeek API Key" />
+      <div style="height:6px;"></div>
+      <input id="deepseekBase" type="text" placeholder="Base URL（默认 https://api.deepseek.com）" />
+      <div class="hint">如使用代理/自建网关，请填写 Base URL；否则可留空。</div>
     </div>
 
     <div class="row">

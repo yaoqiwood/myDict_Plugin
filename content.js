@@ -479,7 +479,7 @@
     const aiButton = document.createElement('button');
     aiButton.textContent = 'AI 查词释义';
     aiButton.style.cssText = `
-      margin-top: 8px;
+      margin-top: 1px;
       padding: 6px 12px;
       background: #007bff;
       color: white;

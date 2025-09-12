@@ -12,6 +12,7 @@
     "https://api.mymemory.translated.net/*",
     "https://libretranslate.de/*",
     "https://libretranslate.com/*",
+    "https://api.deepseek.com/*",
     "http://localhost/*"
   ],
   "background": {

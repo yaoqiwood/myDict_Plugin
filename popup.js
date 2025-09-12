@@ -17,6 +17,52 @@ function load() {
   });
 }
 
+function formatWordLookup(wordData) {
+  if (!wordData || !wordData.isWordLookup) return wordData;
+  
+  const data = wordData.data;
+  let formatted = `📖 ${data.word || ''}\n`;
+  
+  if (data.phonetic) {
+    formatted += `🔊 ${data.phonetic}\n\n`;
+  }
+  
+  if (data.part_of_speech && Array.isArray(data.part_of_speech)) {
+    data.part_of_speech.forEach((pos, index) => {
+      formatted += `${index + 1}. ${pos.pos || ''}\n`;
+      if (pos.definitions && Array.isArray(pos.definitions)) {
+        pos.definitions.forEach((def, defIndex) => {
+          formatted += `   ${defIndex + 1}) ${def}\n`;
+        });
+      }
+      if (pos.examples && Array.isArray(pos.examples)) {
+        pos.examples.forEach((example) => {
+          formatted += `   💡 ${example}\n`;
+        });
+      }
+      formatted += '\n';
+    });
+  }
+  
+  if (data.translations && data.translations['zh-CN']) {
+    formatted += `🇨🇳 中文释义:\n`;
+    data.translations['zh-CN'].forEach((trans, index) => {
+      formatted += `   ${index + 1}) ${trans}\n`;
+    });
+    formatted += '\n';
+  }
+  
+  if (data.frequency) {
+    formatted += `📊 使用频率: ${data.frequency}\n`;
+  }
+  
+  if (data.tags && Array.isArray(data.tags)) {
+    formatted += `🏷️ 标签: ${data.tags.join(', ')}\n`;
+  }
+  
+  return formatted.trim();
+}
+
 async function doTranslate() {
   const text = els.src.value.trim();
   if (!text) return;
@@ -27,7 +73,12 @@ async function doTranslate() {
       payload: { text, target: STATE.targetLang, provider: STATE.provider }
     });
     if (resp && resp.ok) {
-      els.dst.value = resp.data.translation;
+      const result = resp.data;
+      if (result.isWordLookup) {
+        els.dst.value = formatWordLookup(result);
+      } else {
+        els.dst.value = result.translation || result;
+      }
     } else {
       els.dst.value = '翻译失败: ' + (resp?.error || '未知错误');
     }
