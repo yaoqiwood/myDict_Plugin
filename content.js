@@ -6,42 +6,53 @@
     showMarker: false,
   };
 
+  // 插件命名空间，用于避免与其他脚本冲突
   const NAMESPACE = 'qt-ext';
-  let floatingBtn = null;
-  let overlay = null;
-  let panel = null;
-  let sourceTextArea = null;
-  let targetTextArea = null;
+  
+  // 全局变量声明
+  let floatingBtn = null;        // 浮动翻译按钮
+  let overlay = null;            // 遮罩层
+  let panel = null;              // 翻译面板
+  let sourceTextArea = null;     // 原文输入框
+  let targetTextArea = null;     // 译文显示框
 
+  // 日志输出函数，用于调试
   function log(...args) {
     try { console.debug('[QuickTranslator]', ...args); } catch {}
   }
 
+  // 确保页面标记元素存在，用于标识插件已加载
   function ensureMarkerElement() {
     let el = document.getElementById('qt-loaded-marker');
     if (!el) {
+      // 创建标记元素
       el = document.createElement('div');
       el.id = 'qt-loaded-marker';
-      el.textContent = 'QT';
+      el.textContent = 'QT';  // 显示插件缩写
+      
+      // 设置标记样式 - 固定在右下角的小图标
       el.style.position = 'fixed';
       el.style.right = '6px';
       el.style.bottom = '6px';
-      el.style.zIndex = '2147483647';
-      el.style.background = '#2b7cff';
-      el.style.color = '#fff';
+      el.style.zIndex = '2147483647';  // 最高层级
+      el.style.background = '#2b7cff';  // 蓝色背景
+      el.style.color = '#fff';          // 白色文字
       el.style.fontSize = '10px';
       el.style.lineHeight = '16px';
       el.style.width = '16px';
       el.style.height = '16px';
       el.style.textAlign = 'center';
       el.style.borderRadius = '3px';
-      el.style.opacity = '0.6';
-      el.style.pointerEvents = 'none';
+      el.style.opacity = '0.6';         // 半透明
+      el.style.pointerEvents = 'none';  // 不响应鼠标事件
+      
+      // 将标记添加到页面
       document.documentElement.appendChild(el);
     }
     return el;
   }
 
+  // 根据设置更新标记的显示状态
   function updateMarkerVisibility() {
     const el = ensureMarkerElement();
     el.style.display = STATE.showMarker ? 'block' : 'none';
